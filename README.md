@@ -1,7 +1,7 @@
 # 
 <h1 align="center">:avocado: Easy Guacamole Installer & Jump-Host Builder</h1> 
  <p align="center">
-<a href="https://www.paypal.com/donate/?business=PSZ878JBJDMB8&amount=10&no_recurring=0&item_name=Thankyou+for+your+support+in+maintaining+this+project&currency_code=AUD">
+<a href="https://www.paypal.com/donate/?hosted_button_id=TUQGU7QY5FF6U">
   <img src="https://github.com/CloudByteSolutions/Guacamole-Install/raw/main/.github/ISSUE_TEMPLATE/paypal-donate-button.png" width="125" />
 </a>
 
