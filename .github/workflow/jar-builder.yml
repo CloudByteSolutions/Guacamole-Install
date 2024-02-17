@@ -3,7 +3,7 @@ name: Build and Upload Custom Theme JAR
 on:
   push:
     paths:
-      - 'guac-custom-theme-builder/**'
+      - guac-custom-theme-builder/**
 
 jobs:
   build-and-upload-jar:
