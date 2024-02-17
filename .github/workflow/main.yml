@@ -1,4 +1,4 @@
-name: Build and Upload Custom Theme JAR
+name: Build JAR
 
 on:
   push:
