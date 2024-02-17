@@ -21,3 +21,4 @@ sudo systemctl restart guacd && sudo systemctl restart ${TOMCAT}
   - Within `custom-theme.css`, you may need to experiment with the the height and width values under `.login-ui .login-dialog .logo` to scale your particular logo neatly within the dialog box. Another option is to make the login dialog box larger. Under `.login-ui .login-dialog`, experiment with adding a `max-width: 4in;` or similar. There's a ton of css options available and this template is just starting point, Google is your friend!
   - An easy way to debug and preview potential style changes is to tweak various values by setting your browser to developer mode. 
   - Your changes may occasionally appear not to update, if so clear your browser cache before doing any further debugging.
+  
