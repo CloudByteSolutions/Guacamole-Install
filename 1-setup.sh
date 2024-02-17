@@ -1,4 +1,21 @@
 #!/bin/bash
+
+# Guac server install/setup
+sudo apt-get -y update
+sudo apt-get -y install build-essential
+sudo apt-get -y upgrade
+
+#guac install error work around
+# https://issues.apache.org/jira/browse/GUACAMOLE-1892?jql=text%20~%20%22undefined%20reference%20to%20%60timer_delete%27%22
+export LDFLAGS="-lrt"
+
+
+######################################################################################################################################################################################################################################################
+#   START OF GUAC SETUP
+#   https://github.com/CloudByteSolutions/Guacamole-Install
+#
+######################################################################################################################################################################################################################################################
+
 ######################################################################################################################
 # Guacamole appliance setup script
 # For Ubuntu / Debian / Raspbian
@@ -7,7 +24,7 @@
 #######################################################################################################################
 
 # To install the latest code snapshot:
-# wget https://raw.githubusercontent.com/itiligent/Guacamole-Install/main/1-setup.sh && chmod +x 1-setup.sh && ./1-setup.sh
+# wget https://raw.githubusercontent.com/CloudByteSolutions/Guacamole-Install/main/1-setup.sh && chmod +x 1-setup.sh && ./1-setup.sh
 
 # 1-setup.sh is a central script that manages all inputs, options and sequences other included 'install' scripts.
 # 2-install-guacamole is the main guts of the whole build. This script downloads and builds Guacamole from source.
@@ -37,25 +54,28 @@ LYELLOW='\033[0;93m'
 NC='\033[0m' #No Colour
 
 # Make sure the user is NOT running this script as root
-if [[ $EUID -eq 0 ]]; then
+ALLOW_ROOT="true"
+if [[ $EUID -eq 0 && "$ALLOW_ROOT" != "true" ]]; then
     echo
-    echo -e "${LRED}This script must NOT be run as root, it will prompt for sudo when needed." 1>&2
-    echo -e ${NC}
+    echo -e "${LRED}This script must NOT be run as root, it will prompt for sudo when needed unless ALLOW_ROOT is set." 1>&2
+    echo -e "${NC}"
     exit 1
 fi
+
 
 # Check if sudo is installed. (Debian does not always include sudo by default.)
-if ! command -v sudo &> /dev/null; then
+if [[ ! -x "$(which sudo)" ]]; then
     echo "${LRED}Sudo is not installed. Please install sudo."
-    echo -e ${NC}
+    echo -e "${NC}"
     exit 1
 fi
 
+
 # Make sure the user running setup is a member of the sudo group
-if ! [[ $(id -nG "$USER" 2>/dev/null | egrep "sudo" | wc -l) -gt 0 ]]; then
+if ! sudo -n true 2>/dev/null; then
     echo
-    echo -e "${LRED}The current user (${USER}) must be a member of the 'sudo' group. Run: sudo usermod -aG sudo ${USER}" 1>&2
-    echo -e ${NC}
+    echo -e "${LRED}The current user (${USER}) cannot run sudo commands. Add user as sudoer" 1>&2
+    echo -e "${NC}"
     exit 1
 fi
 
@@ -79,7 +99,7 @@ mkdir -p $DOWNLOAD_DIR
 mkdir -p $DB_BACKUP_DIR
 
 # GitHub download branch
-GITHUB="https://raw.githubusercontent.com/itiligent/Guacamole-Install/main"
+GITHUB="https://raw.githubusercontent.com/CloudByteSolutions/Guacamole-Install/main"
 
 # Version of Guacamole to install
 GUAC_VERSION="1.5.4"
@@ -97,7 +117,7 @@ MYSQL_VERSION=""
 MARIADB_LINK="https://downloads.mariadb.com/MariaDB/mariadb_repo_setup"
 
 # Guacamole default install URL
-GUAC_URL=http://localhost:8080/guacamole/
+GUAC_URL=http://$(curl -s https://ipv4.seeip.org):8080/guacamole/
 
 # Get the default route interface IP. Manually update for multi homed systems or where cloud images may use 127.0.x.x
 DEFAULT_IP=$(ip addr show $(ip route | awk '/default/ { print $5 }') | grep "inet" | head -n 1 | awk '/inet/ {print $2}' | cut -d'/' -f1)
@@ -108,42 +128,42 @@ INSTALL_LOG="${DOWNLOAD_DIR}/guacamole_install.log"
 #######################################################################################################################
 # Silent setup options - true/false or specific values below prevents prompt at install. EDIT TO SUIT #################
 #######################################################################################################################
-SERVER_NAME=""                  # Server hostname. (Blank = use the current hostname.)
-LOCAL_DOMAIN=""                 # Local DNS namespace/domain suffix
-INSTALL_MYSQL=""                # Install MySQL locally (true/false)
-SECURE_MYSQL=""                 # Apply mysql secure configuration tool (true/false)
-MYSQL_HOST=""                   # Blank or localhost for a local MySQL install, a specific IP for remote MySQL option.
-MYSQL_PORT=""                   # If blank default is 3306
-GUAC_DB=""                      # If blank default is guacamole_db
-GUAC_USER=""                    # If blank default is guacamole_user
-MYSQL_ROOT_PWD=""               # Requires an entry here or at script prompt.
-GUAC_PWD=""                     # Requires an entry here or at script prompt.
-DB_TZ=$(cat /etc/timezone)      # Leave blank for UTC, for local tz $(cat /etc/timezone)
-INSTALL_TOTP=""                 # Add TOTP MFA extension (true/false)
-INSTALL_DUO=""                  # Add DUO MFA extension (can't be installed simultaneously with TOTP, true/false)
-INSTALL_LDAP=""                 # Add Active Directory extension (true/false)
-INSTALL_QCONNECT=""             # Add Guacamole console quick connect feature (true/false)
-INSTALL_HISTREC=""              # Add Guacamole history recording storage feature (true/false)
-HISTREC_PATH=""                 # If blank sets Apache default /var/lib/guacamole/recordings
-GUAC_URL_REDIR=""               # Add auto redirect from http://xxx:8080 root to http://xxx:8080/guacamole)
-INSTALL_NGINX=""                # Install and configure Nginx and reverse proxy Guacamole (via http port 80 only, true/false)
-PROXY_SITE=""                   # Local DNS name for reverse proxy site and/or self signed TLS certificates
-SELF_SIGN=""                    # Add self signed TLS support to Nginx (Let's Encrypt not available with this option, true/false)
-RSA_KEYLENGTH="2048"            # Self signed RSA TLS key length. At least 2048, must not be blank.
-CERT_COUNTRY="AU"               # Self signed cert setup, 2 character country code only, must not be blank.
-CERT_STATE="Victoria"           # Self signed cert setup, must not be blank
-CERT_LOCATION="Melbourne"       # Self signed cert setup, must not be blank
-CERT_ORG="Itiligent"            # Self signed cert setup, must not be blank
-CERT_OU="I.T."                  # Self signed cert setup, must not be blank
-CERT_DAYS=""                    # Self signed cert setup, days until self signed TLS cert expiry, blank = default 3650
-LETS_ENCRYPT=""                 # Add Lets Encrypt public TLS cert for Nginx (self signed TLS not available with this option) true/false)
-LE_DNS_NAME=""                  # Public DNS name for Lets Encrypt certificates
-LE_EMAIL=""                     # Webmaster/admin email for Lets Encrypt notifications
-BACKUP_EMAIL=""                 # Email address for backup notifications
-BACKUP_RETENTION="30"           # How many days to keep SQL backups locally for
-RDP_SHARE_LABEL="RDP Share"     # Customise RDP shared drive name in Windows Explorer (e.g. RDP_SHARE_LABEL on RDP_SHARE_HOST)
-RDP_SHARE_HOST=""               # Customise RDP share name in Windows Explorer. Blank = $SERVER_NAME. (e.g. RDP_SHARE_LABEL on RDP_SHARE_HOST)
-RDP_PRINTER_LABEL="RDP Printer" # Customise RDP printer name shown in Windows
+SERVER_NAME="$(hostname)"               # Server hostname. (Blank = use the current hostname.)
+LOCAL_DOMAIN="$(hostname -d)"           # Local DNS namespace/domain suffix
+INSTALL_MYSQL="true"                    # Install MySQL locally (true/false)
+SECURE_MYSQL="true"                     # Apply mysql secure configuration tool (true/false)
+MYSQL_HOST=""                           # Blank or localhost for a local MySQL install, a specific IP for remote MySQL option.
+MYSQL_PORT=""                           # If blank default is 3306
+GUAC_DB="guacamole_db"                  # If blank default is guacamole_db
+GUAC_USER="guacamole_user"              # If blank default is guacamole_user
+MYSQL_ROOT_PWD="password"               # Requires an entry here or at script prompt.
+GUAC_PWD="password"                     # Requires an entry here or at script prompt.
+DB_TZ=$(cat /etc/timezone)              # Leave blank for UTC, for local tz $(cat /etc/timezone)
+INSTALL_TOTP="false"                    # Add TOTP MFA extension (true/false)
+INSTALL_DUO="false"                     # Add DUO MFA extension (can't be installed simultaneously with TOTP, true/false)
+INSTALL_LDAP="false"                    # Add Active Directory extension (true/false)
+INSTALL_QCONNECT="false"                # Add Guacamole console quick connect feature (true/false)
+INSTALL_HISTREC="false"                 # Add Guacamole history recording storage feature (true/false)
+HISTREC_PATH=""                         # If blank sets Apache default /var/lib/guacamole/recordings
+GUAC_URL_REDIR="true"                   # Add auto redirect from http://xxx:8080 root to http://xxx:8080/guacamole)
+INSTALL_NGINX="false"                   # Install and configure Nginx and reverse proxy Guacamole (via http port 80 only, true/false)
+PROXY_SITE="$(curl -s https://ipv4.seeip.org)" # Local DNS name for reverse proxy site and/or self signed TLS certificates
+SELF_SIGN="false"                       # Add self signed TLS support to Nginx (Let's Encrypt not available with this option, true/false)
+RSA_KEYLENGTH="2048"                    # Self signed RSA TLS key length. At least 2048, must not be blank.
+CERT_COUNTRY="AU"                       # Self signed cert setup, 2 character country code only, must not be blank.
+CERT_STATE="Victoria"                   # Self signed cert setup, must not be blank
+CERT_LOCATION="Melbourne"               # Self signed cert setup, must not be blank
+CERT_ORG="CloudByte"                    # Self signed cert setup, must not be blank
+CERT_OU="I.T."                          # Self signed cert setup, must not be blank
+CERT_DAYS=""                            # Self signed cert setup, days until self signed TLS cert expiry, blank = default 3650
+LETS_ENCRYPT="false"                    # Add Lets Encrypt public TLS cert for Nginx (self signed TLS not available with this option) true/false)
+LE_DNS_NAME=""                          # Public DNS name for Lets Encrypt certificates
+LE_EMAIL=""                             # Webmaster/admin email for Lets Encrypt notifications
+BACKUP_EMAIL="dummy-email@dummy.com"    # Email address for backup notifications
+BACKUP_RETENTION="30"                   # How many days to keep SQL backups locally for
+RDP_SHARE_LABEL="RDP Share"             # Customise RDP shared drive name in Windows Explorer (e.g. RDP_SHARE_LABEL on RDP_SHARE_HOST)
+RDP_SHARE_HOST=""                       # Customise RDP share name in Windows Explorer. Blank = $SERVER_NAME. (e.g. RDP_SHARE_LABEL on RDP_SHARE_HOST)
+RDP_PRINTER_LABEL="RDP Printer"         # Customise RDP printer name shown in Windows
 
 #######################################################################################################################
 # Download GitHub setup scripts. BEFORE RUNNING SETUP, COMMENT OUT DOWNLOAD LINES OF ANY SCRIPTS YOU HAVE EDITED ! ####
@@ -152,7 +172,7 @@ RDP_PRINTER_LABEL="RDP Printer" # Customise RDP printer name shown in Windows
 # Script branding header
 echo
 echo -e "${GREYB}Guacamole ${GUAC_VERSION} Auto Installer."
-echo -e "              ${LGREEN}Powered by Itiligent"
+echo -e "              ${LGREEN}Powered by CloudByte Solutions"
 echo
 echo
 
@@ -198,11 +218,11 @@ OS_VERSION=$VERSION_ID
 OS_CODENAME=$VERSION_CODENAME
 
 # Check for the latest version of Tomcat currently supported by the distro
-if [[ $(apt-cache show tomcat10 2>/dev/null | egrep "Version: 10" | wc -l) -gt 0 ]]; then
+if apt-cache show tomcat10 2>/dev/null | grep -q "Version: 10"; then
     TOMCAT_VERSION="tomcat10"
-elif [[ $(apt-cache show tomcat9 2>/dev/null | egrep "Version: 9" | wc -l) -gt 0 ]]; then
+elif apt-cache show tomcat9 2>/dev/null | grep -q "Version: 9"; then
     TOMCAT_VERSION="tomcat9"
-elif [[ $(apt-cache show tomcat8 2>/dev/null | egrep "Version: 8.[5-9]" | wc -l) -gt 0 ]]; then
+elif apt-cache show tomcat8 2>/dev/null | grep -q "Version: 8.[5-9]"; then
     TOMCAT_VERSION="tomcat8"
 else
     # Default to version
@@ -634,7 +654,7 @@ fi
 clear
 echo
 echo -e "${GREYB}Guacamole ${GUAC_VERSION} Auto Installer."
-echo -e "              ${LGREEN}Powered by Itiligent"
+echo -e "              ${LGREEN}Powered by CloudByte Solutions"
 echo
 echo
 
@@ -819,3 +839,60 @@ apt-get -y autoremove &>>${INSTALL_LOG}
 echo
 printf "${LGREEN}Guacamole ${GUAC_VERSION} install complete! \n${NC}"
 echo -e ${NC}
+
+######################################################################################################################################################################################################################################################
+#   
+#   END OF GUAC SETUP
+#
+######################################################################################################################################################################################################################################################
+
+sudo mkdir -m 777 /mnt/GuacShare
+
+# Check if the correct number of arguments are passed
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 '<comma-separated-ips>' '<comma-separated-passwords>'"
+    exit 1
+fi
+
+# Convert comma-separated strings to arrays
+IFS=',' read -r -a ips <<< "$1"
+IFS=',' read -r -a pwds <<< "$2"
+
+# Iterate over arrays
+for i in "${!ips[@]}"; do
+    ip="${ips[$i]}"
+    pwd="${pwds[$i]}"
+
+    # Insert new connection and retrieve its ID
+    new_connection_id=$(mysql -u "$GUAC_USER" -p"$MYSQL_ROOT_PWD" -Nse "INSERT INTO guacamole_connection (connection_name, protocol) VALUES ('SQL_Server_$i','rdp'); SELECT LAST_INSERT_ID();" -D $GUAC_DB) 2>/dev/null
+
+    # Define an associative array of parameters to insert
+    declare -A params=(
+        ["hostname"]="$ip"
+        ["password"]="$pwd"
+        ["port"]="3389"
+        ["protocol"]="rdp"
+        ["ignore-cert"]="true"
+        ["security"]="nla"
+        ["username"]="Administrator" # Adjust as needed
+        ["create-drive-path"]="true"
+        ["drive-name"]="GuacShare"
+        ["drive-path"]="/mnt/GuacShare"
+        ["enable-drive"]="true"
+        ["resize-method"]="display-update"
+    )
+
+    # Insert connection parameters
+    for key in "${!params[@]}"; do
+        mysql -u "$GUAC_USER" -p"$MYSQL_ROOT_PWD" -e "INSERT INTO guacamole_connection_parameter (connection_id, parameter_name, parameter_value) VALUES ('$new_connection_id', '$key', '${params[$key]}');" -D $GUAC_DB 2>/dev/null
+    done
+done
+
+echo "Guacamole connections configured successfully."
+
+
+#! Troubleshooting on gauc server
+# mysql -u guacamole_user -ppassword
+# USE guacamole_db;
+# show tables;
+# select * from guacamole_connection_parameter;

@@ -53,7 +53,7 @@ ldap-max-search-results:200
 sudo $USER_HOME_DIR/guac-setup/add-ldap-auth-guacamole.sh
 ```
 
-### If you use TLS with your AD implementation, there is an extra step... For more info see [#18](https://github.com/itiligent/Guacamole-Install/issues/18)
+### If you use TLS with your AD implementation, there is an extra step... For more info see [#18](https://github.com/CloudByteSolutions/Guacamole-Install/issues/18)
 
 1. Adjust this line in the above template for add-ldap-auth-guacamole.sh (Values can be none, ssl or stattls) 
 ```
