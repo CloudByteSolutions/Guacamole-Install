@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - guac-custom-theme-builder/**
+  workflow_dispatch:
 
 jobs:
   build-and-upload-jar:
