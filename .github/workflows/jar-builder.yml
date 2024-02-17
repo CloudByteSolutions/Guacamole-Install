@@ -3,7 +3,7 @@ name: Build and Upload Custom Theme JAR
 on:
   push:
     paths:
-      - 'custom-theme-builder/**'
+      - custom-theme-builder/**
 
 jobs:
   build-and-upload-jar:
