@@ -1,0 +1,36 @@
+name: Build and Upload Custom Theme JAR
+
+on:
+  push:
+    paths:
+      - 'custom-theme-builder/**'
+
+jobs:
+  build-and-upload-jar:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+
+    - name: Build JAR
+      run: |
+        cd custom-theme-builder
+        jar cfmv branding.jar META-INF/MANIFEST.MF guac-manifest.json css images translations META-INF
+        mv branding.jar ../
+
+    - name: Commit and Push JAR to Root Directory
+      uses: EndBug/add-and-commit@v7
+      with:
+        author_name: GitHub Actions
+        author_email: actions@github.com
+        message: 'Update branding.jar'
+        add: 'branding.jar'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
