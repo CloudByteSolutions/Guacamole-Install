@@ -3,7 +3,7 @@ name: Build and Upload Custom Theme JAR
 on:
   push:
     paths:
-      - custom-theme-builder/**
+      - 'guac-custom-theme-builder/**'
 
 jobs:
   build-and-upload-jar:
@@ -21,7 +21,7 @@ jobs:
 
     - name: Build JAR
       run: |
-        cd custom-theme-builder
+        cd guac-custom-theme-builder
         jar cfmv branding.jar META-INF/MANIFEST.MF guac-manifest.json css images translations META-INF
         mv branding.jar ../
 
